@@ -347,70 +347,43 @@ export const GameEngine = () => {
         role="application"
         aria-label="Flame Racer Game"
       >
-        {/* Cosmic Background */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none space-background">
-          {/* Stars */}
-          {Array.from({ length: 50 }).map((_, i) => (
+        {/* Static Cosmic Background */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          {/* Static stars */}
+          {Array.from({ length: 80 }).map((_, i) => (
             <div
               key={i}
-              className="absolute w-1 h-1 bg-white rounded-full animate-pulse"
+              className="absolute bg-white rounded-full"
               style={{
                 left: `${Math.random() * 100}%`,
                 top: `${Math.random() * 100}%`,
-                animationDelay: `${Math.random() * 3}s`,
-                opacity: Math.random() * 0.7 + 0.3
+                width: `${Math.random() * 2 + 1}px`,
+                height: `${Math.random() * 2 + 1}px`,
+                opacity: Math.random() * 0.8 + 0.2
               }}
             />
           ))}
           
-          {/* Larger stars */}
-          {Array.from({ length: 15 }).map((_, i) => (
-            <div
-              key={`star-${i}`}
-              className="absolute w-2 h-2 bg-gradient-to-r from-blue-300 to-white rounded-full animate-pulse"
-              style={{
-                left: `${Math.random() * 100}%`,
-                top: `${Math.random() * 100}%`,
-                animationDelay: `${Math.random() * 4}s`,
-                opacity: Math.random() * 0.5 + 0.2
-              }}
-            />
-          ))}
-          
-          {/* Nebula effects */}
+          {/* Nebula gradient overlay */}
           <div 
-            className="absolute inset-0 opacity-20"
+            className="absolute inset-0 opacity-25"
             style={{
               background: `
-                radial-gradient(circle at 20% 30%, hsl(280 100% 50% / 0.15), transparent 40%),
-                radial-gradient(circle at 80% 70%, hsl(240 100% 60% / 0.1), transparent 35%),
-                radial-gradient(circle at 60% 10%, hsl(300 100% 40% / 0.08), transparent 50%)
+                radial-gradient(ellipse at 25% 25%, hsl(280 80% 40% / 0.15), transparent 50%),
+                radial-gradient(ellipse at 75% 75%, hsl(240 70% 50% / 0.12), transparent 45%),
+                radial-gradient(ellipse at 50% 10%, hsl(300 60% 35% / 0.08), transparent 40%)
               `
             }}
           />
-          
-          {/* Grid pattern overlay */}
-          <div className="absolute inset-0 opacity-10">
-            <div 
-              className="absolute inset-0"
-              style={{
-                backgroundImage: `
-                  linear-gradient(hsl(var(--foreground) / 0.1) 1px, transparent 1px),
-                  linear-gradient(90deg, hsl(var(--foreground) / 0.1) 1px, transparent 1px)
-                `,
-                backgroundSize: '80px 80px'
-              }}
-            />
-          </div>
           
           {/* Speed lines */}
           {[1, 2, 3, 4].map(i => (
             <div
               key={i}
-              className="absolute left-0 right-0 h-0.5 opacity-40"
+              className="absolute left-0 right-0 h-px opacity-30"
               style={{ 
                 top: `${i * (600 / 5)}px`,
-                background: 'linear-gradient(90deg, transparent, hsl(var(--flame-ember) / 0.3), transparent)'
+                background: 'linear-gradient(90deg, transparent, hsl(var(--flame-ember) / 0.4), transparent)'
               }}
             />
           ))}
