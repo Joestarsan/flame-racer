@@ -71,7 +71,7 @@ export const GameEngine = () => {
     a.y + a.height > b.y;
 
   const spawnWave = useCallback(() => {
-    const corridor = gameState.time < 20 ? 2 : 1;
+    const corridor = gameState.time < 20 ? 3 : 2; // Больше свободного места
     const delta = Math.floor(Math.random() * 3) - 1;
     const nextSafe = clamp(safeLaneRef.current + delta, 0, LANE_COUNT - corridor);
     
@@ -83,27 +83,20 @@ export const GameEngine = () => {
     const newEntities: Entity[] = [];
     let lane = 0;
     let placed = 0;
-    let streak = 0;
 
-    while (lane < LANE_COUNT && placed < 3) {
+    // Максимум 2 препятствия в волне, больших размеров
+    while (lane < LANE_COUNT && placed < 2) {
       if (!freeLanes[lane]) {
-        streak = 0;
         lane++;
         continue;
       }
 
-      const canDouble = Math.random() < 0.22 && 
+      // Чаще делаем двойные препятствия для более крупных блоков
+      const canDouble = Math.random() < 0.6 && 
                        lane + 1 < LANE_COUNT && 
-                       freeLanes[lane + 1] && 
-                       streak < 1;
+                       freeLanes[lane + 1];
       
       const width = canDouble ? 2 : 1;
-      
-      if (streak + width >= 3) {
-        streak = 0;
-        lane++;
-        continue;
-      }
 
       const obstacleTypes = ['spam', 'latency', 'mev', 'reorg', 'fee'] as const;
       const obstacleType = obstacleTypes[Math.floor(Math.random() * obstacleTypes.length)];
@@ -111,9 +104,9 @@ export const GameEngine = () => {
       newEntities.push({
         id: `obstacle-${Date.now()}-${lane}`,
         x: lane * LANE_WIDTH + 5,
-        y: -60,
+        y: -80, // Выше стартовая позиция
         width: LANE_WIDTH * width - 10,
-        height: 46 + Math.random() * 18,
+        height: 60 + Math.random() * 25, // Больше высота
         type: 'obstacle',
         obstacleType,
         speed: gameState.speed
@@ -124,19 +117,18 @@ export const GameEngine = () => {
       }
 
       placed++;
-      streak += width;
-      lane += width + (Math.random() < 0.15 ? 1 : 0);
+      lane += width + 1; // Больше промежуток между препятствиями
     }
 
-    // Add bonus
-    if (Math.random() < 0.35) {
+    // Бонусы реже но больше
+    if (Math.random() < 0.4) {
       const bonusLane = nextSafe + (corridor > 1 && Math.random() < 0.5 ? 1 : 0);
       newEntities.push({
         id: `bonus-${Date.now()}`,
-        x: bonusLane * LANE_WIDTH + (LANE_WIDTH - 26) / 2,
-        y: -26,
-        width: 26,
-        height: 26,
+        x: bonusLane * LANE_WIDTH + (LANE_WIDTH - 32) / 2,
+        y: -32,
+        width: 32, // Больше бонусы
+        height: 32,
         type: 'bonus',
         speed: gameState.speed * 0.9
       });
@@ -258,11 +250,11 @@ export const GameEngine = () => {
         entities: [...prev.entities, ...newEntities]
       }));
       
-      // Set next spawn time with guaranteed minimum gap
-      const baseInterval = 0.42 + Math.random() * (0.95 - 0.42);
-      const speedMultiplier = 1 + Math.min(gameState.time * 0.02, 1.4);
-      const nextInterval = baseInterval / speedMultiplier;
-      const minGapTime = MIN_VERTICAL_GAP / gameState.speed;
+        // Set next spawn time with guaranteed minimum gap - увеличиваем интервалы
+        const baseInterval = 0.8 + Math.random() * (1.4 - 0.8); // Больше интервал
+        const speedMultiplier = 1 + Math.min(gameState.time * 0.015, 1.2); // Медленнее ускорение
+        const nextInterval = baseInterval / speedMultiplier;
+        const minGapTime = (MIN_VERTICAL_GAP * 1.5) / gameState.speed; // Больше минимальный зазор
       
       spawnTimerRef.current = Math.max(nextInterval, minGapTime);
     }
@@ -347,30 +339,54 @@ export const GameEngine = () => {
         role="application"
         aria-label="Flame Racer Game"
       >
-        {/* Background effects */}
+        {/* Background effects - космический фон */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute inset-0 opacity-30">
-            {/* Grid pattern */}
-            <div 
-              className="absolute inset-0"
-              style={{
-                backgroundImage: `
-                  linear-gradient(hsl(var(--foreground) / 0.05) 1px, transparent 1px),
-                  linear-gradient(90deg, hsl(var(--foreground) / 0.05) 1px, transparent 1px)
-                `,
-                backgroundSize: '64px 64px'
-              }}
-            />
-          </div>
+          {/* Космический фон с звездами */}
+          <div 
+            className="absolute inset-0"
+            style={{
+              background: `
+                radial-gradient(2px 2px at 20px 30px, #fff, transparent),
+                radial-gradient(2px 2px at 40px 70px, rgba(255,255,255,0.8), transparent),
+                radial-gradient(1px 1px at 90px 40px, #fff, transparent),
+                radial-gradient(1px 1px at 130px 80px, rgba(255,255,255,0.6), transparent),
+                radial-gradient(2px 2px at 160px 30px, #fff, transparent),
+                radial-gradient(1px 1px at 200px 90px, rgba(255,255,255,0.7), transparent),
+                radial-gradient(1px 1px at 240px 50px, #fff, transparent),
+                radial-gradient(2px 2px at 280px 10px, rgba(255,255,255,0.9), transparent),
+                radial-gradient(1px 1px at 320px 70px, #fff, transparent),
+                radial-gradient(2px 2px at 360px 40px, rgba(255,255,255,0.8), transparent),
+                radial-gradient(1px 1px at 400px 20px, #fff, transparent),
+                radial-gradient(1px 1px at 440px 80px, rgba(255,255,255,0.6), transparent),
+                linear-gradient(180deg, #0a0f23 0%, #1a1f3a 50%, #2d1b69 100%)
+              `,
+              backgroundSize: '300px 300px, 300px 300px, 300px 300px, 300px 300px, 300px 300px, 300px 300px, 300px 300px, 300px 300px, 300px 300px, 300px 300px, 300px 300px, 300px 300px, 100% 100%'
+            }}
+          />
           
-          {/* Speed lines */}
-          {[1, 2, 3, 4].map(i => (
-            <div
-              key={i}
-              className="absolute left-0 right-0 h-0.5 opacity-60 stripe-effect"
-              style={{ top: `${i * (600 / 5)}px` }}
-            />
-          ))}
+          {/* Туманность */}
+          <div 
+            className="absolute inset-0 opacity-30"
+            style={{
+              background: `
+                radial-gradient(400px 300px at 70% 20%, rgba(147, 51, 234, 0.3), transparent 50%),
+                radial-gradient(500px 400px at 30% 80%, rgba(59, 130, 246, 0.2), transparent 60%),
+                radial-gradient(300px 200px at 90% 60%, rgba(245, 158, 11, 0.2), transparent 50%)
+              `
+            }}
+          />
+          
+          {/* Сетка гиперпространства */}
+          <div 
+            className="absolute inset-0 opacity-20"
+            style={{
+              backgroundImage: `
+                linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px)
+              `,
+              backgroundSize: '50px 50px'
+            }}
+          />
         </div>
 
         <EmberEffect />
