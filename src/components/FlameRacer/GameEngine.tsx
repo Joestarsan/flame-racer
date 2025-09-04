@@ -198,18 +198,20 @@ export const GameEngine = () => {
       };
     });
 
-    // Save score to database
-    try {
-      const { error } = await saveGameResult(finalScore, finalSpeed, finalTime);
-      if (error) {
+    // Save score to database in background without blocking
+    setTimeout(async () => {
+      try {
+        const { error } = await saveGameResult(finalScore, finalSpeed, finalTime);
+        if (error) {
+          console.error('Error saving score:', error);
+          toast.error('Failed to save result');
+        } else {
+          toast.success(`Score saved! Points: ${finalScore.toLocaleString()}`);
+        }
+      } catch (error) {
         console.error('Error saving score:', error);
-        toast.error('Failed to save result');
-      } else {
-        toast.success(`Score saved! Points: ${finalScore.toLocaleString()}`);
       }
-    } catch (error) {
-      console.error('Error saving score:', error);
-    }
+    }, 0);
   }, [gameState.score, gameState.speed, gameState.time, saveGameResult]);
 
   const gameLoop = useCallback((currentTime: number) => {

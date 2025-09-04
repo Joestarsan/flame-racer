@@ -55,21 +55,8 @@ export const GameMenu = ({ bestScore, onStart }: GameMenuProps) => {
 
   useEffect(() => {
     fetchHighScores();
-    
-    // Set up real-time subscription for high scores
-    const subscription = supabase
-      .channel('game_results_menu')
-      .on('postgres_changes', 
-        { event: 'INSERT', schema: 'public', table: 'game_results' },
-        () => {
-          fetchHighScores(); // Refresh when new score is added
-        }
-      )
-      .subscribe();
-
-    return () => {
-      subscription.unsubscribe();
-    };
+    // Убираем real-time подписку из меню - она не нужна для производительности
+    // High scores обновятся при перезапуске игры
   }, []);
 
   return (
