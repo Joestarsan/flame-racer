@@ -75,14 +75,23 @@ export const GameEngine = () => {
   const safeLaneRef = useRef<number>(Math.floor(LANE_COUNT / 2));
 
   // Responsive game dimensions based on viewport (keeps 3:2 aspect ratio)
-  const { gameWidth, gameHeight, laneWidth } = useMemo(() => {
-    const padding = isMobile ? 0 : 32;
-    const maxW = Math.max(320, Math.min(1500, viewport.w - padding));
-    const maxH = Math.max(220, Math.min(1000, viewport.h - padding));
-    const width = Math.min(maxW, Math.floor(maxH * 3 / 2)); // fit by height if needed
-    const height = Math.floor(width * 2 / 3);
-    return { gameWidth: width, gameHeight: height, laneWidth: width / LANE_COUNT };
-  }, [viewport.w, viewport.h, isMobile]);
+ const { gameWidth, gameHeight, laneWidth } = useMemo(() => {
+  const isPortrait = viewport.h > viewport.w;  // Detect orientation
+  const padding = isMobile ? 0 : 16;  // Reduced for more room
+  const maxW = Math.max(320, Math.min(1200, viewport.w - padding));  // Higher cap
+  const maxH = Math.max(220, Math.min(1600, viewport.h - padding));  // Much higher for tall screens
+  let width, height;
+  if (isPortrait) {
+    // Portrait: Taller ratio (2:3, height-driven)
+    height = Math.min(maxH, Math.floor(maxW * 3 / 2));
+    width = Math.floor(height * 2 / 3);
+  } else {
+    // Landscape: Original 3:2 (width-driven)
+    width = Math.min(maxW, Math.floor(maxH * 3 / 2));
+    height = Math.floor(width * 2 / 3);
+  }
+  return { gameWidth: width, gameHeight: height, laneWidth: width / LANE_COUNT };
+}, [viewport.w, viewport.h, isMobile]);
 
   const clamp = (value: number, min: number, max: number) => 
     Math.min(Math.max(value, min), max);
