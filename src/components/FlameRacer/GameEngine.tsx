@@ -38,8 +38,8 @@ const GAME_WIDTH = 900;
 const GAME_HEIGHT = 600;
 const LANE_COUNT = 5;
 const LANE_WIDTH = GAME_WIDTH / LANE_COUNT;
-const BASE_SCROLL_SPEED = 220;
-const PLAYER_SPEED_X = 520;
+const BASE_SCROLL_SPEED = 300;
+const PLAYER_SPEED_X = 720;
 const MIN_VERTICAL_GAP = 120;
 
 export const GameEngine = () => {
@@ -233,7 +233,7 @@ export const GameEngine = () => {
       const newScore = Math.max(0, prev.score + deltaTime * 60);
       const newSpeed = Math.max(
         BASE_SCROLL_SPEED,
-        BASE_SCROLL_SPEED * (1 + Math.min(newTime * 0.03, 2.2))
+        BASE_SCROLL_SPEED * (1 + Math.min(newTime * 0.05, 2.2))
       );
 
       // Update player position
