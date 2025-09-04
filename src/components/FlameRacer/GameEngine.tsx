@@ -276,11 +276,11 @@ export const GameEngine = () => {
         entities: [...prev.entities, ...newEntities]
       }));
       
-      // Set next spawn time with guaranteed minimum gap
-      const baseInterval = 0.42 + Math.random() * (0.95 - 0.42);
-      const speedMultiplier = 1 + Math.min(gameState.time * 0.02, 1.4);
+      // Set next spawn time with more breathing room for high-speed gameplay
+      const baseInterval = 1.2 + Math.random() * (2.0 - 1.2); // Much longer intervals (1.2-2.0s)
+      const speedMultiplier = 1 + Math.min(gameState.time * 0.015, 1.2); // Slower acceleration of frequency
       const nextInterval = baseInterval / speedMultiplier;
-      const minGapTime = MIN_VERTICAL_GAP / gameState.speed;
+      const minGapTime = (MIN_VERTICAL_GAP * 1.8) / gameState.speed; // 80% more gap
       
       spawnTimerRef.current = Math.max(nextInterval, minGapTime);
     }
