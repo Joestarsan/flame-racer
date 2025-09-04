@@ -71,47 +71,51 @@ export const GameEngine = () => {
     a.y + a.height > b.y;
 
   const spawnWave = useCallback(() => {
-    // Reserve a safe corridor so there is always a passable path
-    const corridor = gameState.time < 15 ? 2 : 1;
-    const delta = Math.floor(Math.random() * 3) - 1;
+    // Fair, deterministic wave generator with guaranteed corridor
+    const corridor = gameState.time < 18 ? 2 : 1; // early game: 2 lanes safe
+    const delta = Math.floor(Math.random() * 3) - 1; // -1, 0, 1
     const nextSafe = clamp(safeLaneRef.current + delta, 0, LANE_COUNT - corridor);
 
-    const blocked = new Set<number>();
-    for (let i = 0; i < corridor; i++) blocked.add(nextSafe + i);
+    // Lanes availability map (false = free, true = reserved)
+    const reserved = new Array(LANE_COUNT).fill(false);
+    for (let i = 0; i < corridor; i++) reserved[nextSafe + i] = true; // reserve safe corridor
 
-    const freeLanes = Array.from({ length: LANE_COUNT }, (_, i) => !blocked.has(i));
-    const candidates = freeLanes.map((ok, i) => (ok ? i : -1)).filter(i => i >= 0);
+    const isFree = (l: number) => l >= 0 && l < LANE_COUNT && !reserved[l];
+    const takeWithPadding = (start: number, width: number) => {
+      for (let l = start - 1; l <= start + width; l++) {
+        if (l >= 0 && l < LANE_COUNT) reserved[l] = true; // 1-lane gap on both sides
+      }
+    };
 
     const newEntities: Entity[] = [];
 
-    // Shuffle candidates to vary placement
-    for (let i = candidates.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
-    }
+    // Helper to pick a spot considering width preference (2 first, then 1)
+    const pickSpot = (): { start: number; width: number } | null => {
+      const candidates: { start: number; width: number }[] = [];
+      for (let l = 0; l < LANE_COUNT; l++) {
+        if (!isFree(l)) continue;
+        const canDouble = isFree(l + 1);
+        if (canDouble) candidates.push({ start: l, width: 2 });
+        candidates.push({ start: l, width: 1 });
+      }
+      if (!candidates.length) return null;
+      return candidates[Math.floor(Math.random() * candidates.length)];
+    };
 
-    const chosen: number[] = [];
-    for (const lane of candidates) {
-      if (chosen.length >= 2) break; // at most two obstacles
-      // ensure spacing: keep at least one empty lane between obstacles
-      if (chosen.some(c => Math.abs(c - lane) < 2)) continue;
-      chosen.push(lane);
-    }
-
-    // Create bigger obstacles on chosen lanes (try to make some 2-lane wide)
-    for (const lane of chosen) {
-      const canDouble = lane + 1 < LANE_COUNT && freeLanes[lane + 1];
-      const width = canDouble && Math.random() < 0.5 ? 2 : 1;
-      for (let k = 0; k < width; k++) if (lane + k < LANE_COUNT) freeLanes[lane + k] = false;
+    // Place up to two obstacles
+    for (let n = 0; n < 2; n++) {
+      const spot = pickSpot();
+      if (!spot) break;
+      takeWithPadding(spot.start, spot.width);
 
       const obstacleTypes = ['spam', 'latency', 'mev', 'reorg', 'fee'] as const;
       const obstacleType = obstacleTypes[Math.floor(Math.random() * obstacleTypes.length)];
 
       newEntities.push({
-        id: `obstacle-${Date.now()}-${lane}`,
-        x: lane * LANE_WIDTH + 5,
+        id: `obstacle-${Date.now()}-${spot.start}`,
+        x: spot.start * LANE_WIDTH + 5,
         y: -72,
-        width: LANE_WIDTH * width - 10,
+        width: LANE_WIDTH * spot.width - 10,
         height: 60 + Math.random() * 24,
         type: 'obstacle',
         obstacleType,
@@ -119,9 +123,9 @@ export const GameEngine = () => {
       });
     }
 
-    // Bonus a bit larger and visible
-    if (Math.random() < 0.4) {
-      const bonusLane = nextSafe + (corridor > 1 && Math.random() < 0.5 ? 1 : 0);
+    // Bonus placed inside the safe corridor to guide the path
+    if (Math.random() < 0.45) {
+      const bonusLane = nextSafe + (corridor > 1 ? (Math.random() < 0.5 ? 0 : 1) : 0);
       newEntities.push({
         id: `bonus-${Date.now()}`,
         x: bonusLane * LANE_WIDTH + (LANE_WIDTH - 32) / 2,
