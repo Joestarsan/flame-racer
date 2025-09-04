@@ -1,7 +1,7 @@
-import { ClassicEngine } from "@/components/FlameRacer/ClassicEngine";
+import { GameEngine } from "@/components/FlameRacer/GameEngine";
 
 const Index = () => {
-  return <ClassicEngine />;
+  return <GameEngine />;
 };
 
 export default Index;

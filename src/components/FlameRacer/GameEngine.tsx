@@ -60,9 +60,6 @@ export const GameEngine = () => {
   const lastTimeRef = useRef<number>(0);
   const spawnTimerRef = useRef<number>(0);
   const safeLaneRef = useRef<number>(Math.floor(LANE_COUNT / 2));
-  const accumulatorRef = useRef<number>(0);
-  const FIXED_DT = 1 / 60;
-  const MAX_STEPS = 5;
 
   const clamp = (value: number, min: number, max: number) => 
     Math.min(Math.max(value, min), max);
@@ -131,6 +128,7 @@ export const GameEngine = () => {
       lane += width + (Math.random() < 0.15 ? 1 : 0);
     }
 
+    // Add bonus
     if (Math.random() < 0.35) {
       const bonusLane = nextSafe + (corridor > 1 && Math.random() < 0.5 ? 1 : 0);
       newEntities.push({
@@ -183,13 +181,24 @@ export const GameEngine = () => {
   const gameLoop = useCallback((currentTime: number) => {
     if (!gameState.isRunning) return;
 
-    const deltaTime = Math.min((currentTime - lastTimeRef.current) / 1000, 0.066);
+    const deltaMs = currentTime - lastTimeRef.current;
+    if (deltaMs < 0 || deltaMs > 1000) {
+      console.warn('[FlameRacer] abnormal deltaMs', { deltaMs, currentTime, last: lastTimeRef.current });
+    }
+    let deltaTime = deltaMs / 1000;
+    if (!Number.isFinite(deltaTime) || deltaTime < 0 || deltaTime > 0.5) {
+      deltaTime = 1 / 60; // fallback to ~16ms
+    }
+    deltaTime = Math.min(deltaTime, 0.066);
     lastTimeRef.current = currentTime;
 
     setGameState(prev => {
-      const newTime = prev.time + deltaTime;
-      const newScore = prev.score + deltaTime * 60;
-      const newSpeed = BASE_SCROLL_SPEED * (1 + Math.min(newTime * 0.03, 2.2));
+      const newTime = Math.max(prev.time + deltaTime, 0);
+      const newScore = Math.max(0, prev.score + deltaTime * 60);
+      const newSpeed = Math.max(
+        BASE_SCROLL_SPEED,
+        BASE_SCROLL_SPEED * (1 + Math.min(newTime * 0.03, 2.2))
+      );
 
       // Update player position
       const direction = (input.right ? 1 : 0) - (input.left ? 1 : 0);
@@ -338,54 +347,30 @@ export const GameEngine = () => {
         role="application"
         aria-label="Flame Racer Game"
       >
-        {/* Background effects - космический фон */}
+        {/* Background effects */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          {/* Космический фон с звездами */}
-          <div 
-            className="absolute inset-0"
-            style={{
-              background: `
-                radial-gradient(2px 2px at 20px 30px, #fff, transparent),
-                radial-gradient(2px 2px at 40px 70px, rgba(255,255,255,0.8), transparent),
-                radial-gradient(1px 1px at 90px 40px, #fff, transparent),
-                radial-gradient(1px 1px at 130px 80px, rgba(255,255,255,0.6), transparent),
-                radial-gradient(2px 2px at 160px 30px, #fff, transparent),
-                radial-gradient(1px 1px at 200px 90px, rgba(255,255,255,0.7), transparent),
-                radial-gradient(1px 1px at 240px 50px, #fff, transparent),
-                radial-gradient(2px 2px at 280px 10px, rgba(255,255,255,0.9), transparent),
-                radial-gradient(1px 1px at 320px 70px, #fff, transparent),
-                radial-gradient(2px 2px at 360px 40px, rgba(255,255,255,0.8), transparent),
-                radial-gradient(1px 1px at 400px 20px, #fff, transparent),
-                radial-gradient(1px 1px at 440px 80px, rgba(255,255,255,0.6), transparent),
-                linear-gradient(180deg, #0a0f23 0%, #1a1f3a 50%, #2d1b69 100%)
-              `,
-              backgroundSize: '300px 300px, 300px 300px, 300px 300px, 300px 300px, 300px 300px, 300px 300px, 300px 300px, 300px 300px, 300px 300px, 300px 300px, 300px 300px, 300px 300px, 100% 100%'
-            }}
-          />
+          <div className="absolute inset-0 opacity-30">
+            {/* Grid pattern */}
+            <div 
+              className="absolute inset-0"
+              style={{
+                backgroundImage: `
+                  linear-gradient(hsl(var(--foreground) / 0.05) 1px, transparent 1px),
+                  linear-gradient(90deg, hsl(var(--foreground) / 0.05) 1px, transparent 1px)
+                `,
+                backgroundSize: '64px 64px'
+              }}
+            />
+          </div>
           
-          {/* Туманность */}
-          <div 
-            className="absolute inset-0 opacity-30"
-            style={{
-              background: `
-                radial-gradient(400px 300px at 70% 20%, rgba(147, 51, 234, 0.3), transparent 50%),
-                radial-gradient(500px 400px at 30% 80%, rgba(59, 130, 246, 0.2), transparent 60%),
-                radial-gradient(300px 200px at 90% 60%, rgba(245, 158, 11, 0.2), transparent 50%)
-              `
-            }}
-          />
-          
-          {/* Сетка гиперпространства */}
-          <div 
-            className="absolute inset-0 opacity-20"
-            style={{
-              backgroundImage: `
-                linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px)
-              `,
-              backgroundSize: '50px 50px'
-            }}
-          />
+          {/* Speed lines */}
+          {[1, 2, 3, 4].map(i => (
+            <div
+              key={i}
+              className="absolute left-0 right-0 h-0.5 opacity-60 stripe-effect"
+              style={{ top: `${i * (600 / 5)}px` }}
+            />
+          ))}
         </div>
 
         <EmberEffect />
