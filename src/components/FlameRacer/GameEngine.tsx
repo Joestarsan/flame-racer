@@ -1,4 +1,6 @@
 import { useEffect, useRef, useCallback, useState } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
 import { Player } from "./Player";
 import { Obstacle } from "./Obstacle";
 import { Bonus } from "./Bonus";
@@ -41,6 +43,7 @@ const PLAYER_SPEED_X = 520;
 const MIN_VERTICAL_GAP = 120;
 
 export const GameEngine = () => {
+  const { saveGameScore } = useAuth();
   const gameRef = useRef<HTMLDivElement>(null);
   const [gameState, setGameState] = useState<GameState>({
     isRunning: false,
@@ -178,9 +181,13 @@ export const GameEngine = () => {
     lastTimeRef.current = performance.now();
   }, []);
 
-  const gameOver = useCallback(() => {
+  const gameOver = useCallback(async () => {
+    const finalScore = Math.floor(gameState.score);
+    const finalSpeed = gameState.speed / BASE_SCROLL_SPEED;
+    const finalTime = gameState.time;
+
     setGameState(prev => {
-      const newBest = Math.max(prev.bestScore, Math.floor(prev.score));
+      const newBest = Math.max(prev.bestScore, finalScore);
       localStorage.setItem('flameRacer.bestScore', newBest.toString());
       
       return {
@@ -190,7 +197,20 @@ export const GameEngine = () => {
         bestScore: newBest
       };
     });
-  }, []);
+
+    // Save score to database
+    try {
+      const { error } = await saveGameScore(finalScore, finalSpeed, finalTime);
+      if (error) {
+        console.error('Error saving score:', error);
+        toast.error('Не удалось сохранить результат');
+      } else {
+        toast.success(`Результат сохранён! Очки: ${finalScore.toLocaleString()}`);
+      }
+    } catch (error) {
+      console.error('Error saving score:', error);
+    }
+  }, [gameState.score, gameState.speed, gameState.time, saveGameScore]);
 
   const gameLoop = useCallback((currentTime: number) => {
     if (!gameState.isRunning) return;
