@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback, useState } from "react";
+import { useEffect, useRef, useCallback, useState, useMemo } from "react";
 import { useGame } from "@/contexts/GameContext";
 import { toast } from "sonner";
 import { Player } from "./Player";
@@ -7,7 +7,6 @@ import { Bonus } from "./Bonus";
 import { HUD } from "./HUD";
 import { GameMenu } from "./GameMenu";
 import { GameOverlay } from "./GameOverlay";
-import { EmberEffect } from "./EmberEffect";
 
 interface Entity {
   id: string;
@@ -41,6 +40,8 @@ const LANE_WIDTH = GAME_WIDTH / LANE_COUNT;
 const BASE_SCROLL_SPEED = 300;
 const PLAYER_SPEED_X = 720;
 const MIN_VERTICAL_GAP = 120;
+const TARGET_FPS = 60;
+const FRAME_TIME = 1000 / TARGET_FPS;
 
 export const GameEngine = () => {
   const { saveGameResult } = useGame();
@@ -218,61 +219,79 @@ export const GameEngine = () => {
     if (!gameState.isRunning) return;
 
     const deltaMs = currentTime - lastTimeRef.current;
-    if (deltaMs < 0 || deltaMs > 1000) {
-      console.warn('[FlameRacer] abnormal deltaMs', { deltaMs, currentTime, last: lastTimeRef.current });
+    // Skip frame if too little time has passed (throttle to target FPS)
+    if (deltaMs < FRAME_TIME - 1) {
+      gameLoopRef.current = requestAnimationFrame(gameLoop);
+      return;
     }
-    let deltaTime = deltaMs / 1000;
-    if (!Number.isFinite(deltaTime) || deltaTime < 0 || deltaTime > 0.5) {
-      deltaTime = 1 / 60; // fallback to ~16ms
+
+    let deltaTime = Math.min(deltaMs / 1000, 0.033); // Cap at ~30fps minimum
+    if (!Number.isFinite(deltaTime) || deltaTime <= 0) {
+      deltaTime = 1 / 60;
     }
-    deltaTime = Math.min(deltaTime, 0.066);
     lastTimeRef.current = currentTime;
 
+    // Batch all state updates into single setState call
     setGameState(prev => {
-      const newTime = Math.max(prev.time + deltaTime, 0);
-      const newScore = Math.max(0, prev.score + deltaTime * 60);
-      const newSpeed = Math.max(
-        BASE_SCROLL_SPEED,
-        BASE_SCROLL_SPEED * (1 + Math.min(newTime * 0.05, 2.2))
-      );
+      const newTime = prev.time + deltaTime;
+      const newScore = prev.score + deltaTime * 60;
+      const newSpeed = BASE_SCROLL_SPEED * (1 + Math.min(newTime * 0.05, 2.2));
 
       // Update player position
       const direction = (input.right ? 1 : 0) - (input.left ? 1 : 0);
-      const playerVelocity = direction * PLAYER_SPEED_X;
       const newPlayerX = clamp(
-        prev.playerX + playerVelocity * deltaTime,
+        prev.playerX + direction * PLAYER_SPEED_X * deltaTime,
         0,
         GAME_WIDTH - 42
       );
 
-      // Update entities
-      const updatedEntities = prev.entities
-        .map(entity => ({
-          ...entity,
-          y: entity.y + entity.speed * deltaTime
-        }))
-        .filter(entity => entity.y < GAME_HEIGHT + 100 && !entity.dead);
-
-      // Check collisions
-      const playerRect = { x: newPlayerX, y: GAME_HEIGHT - 110, width: 42, height: 60 };
-      
+      // Update entities in single pass
+      const speedDelta = newSpeed * deltaTime;
       let collisionDetected = false;
       let scoreBonus = 0;
+      const playerRect = { x: newPlayerX, y: GAME_HEIGHT - 110, width: 42, height: 60 };
       
-      const entitiesAfterCollision = updatedEntities.map(entity => {
-        if (entity.type === 'obstacle' && checkCollision(playerRect, entity)) {
+      const filteredEntities = [];
+      for (const entity of prev.entities) {
+        const updatedY = entity.y + speedDelta;
+        
+        // Filter out entities that are off-screen
+        if (updatedY >= GAME_HEIGHT + 100 || entity.dead) continue;
+        
+        const updatedEntity = { ...entity, y: updatedY };
+        
+        // Check collisions
+        if (entity.type === 'obstacle' && checkCollision(playerRect, updatedEntity)) {
           collisionDetected = true;
-        } else if (entity.type === 'bonus' && !entity.dead && checkCollision(playerRect, entity)) {
+        } else if (entity.type === 'bonus' && !entity.dead && checkCollision(playerRect, updatedEntity)) {
           scoreBonus += 50;
-          return { ...entity, dead: true };
+          updatedEntity.dead = true;
         }
-        return entity;
-      }).filter(entity => !entity.dead);
+        
+        if (!updatedEntity.dead) {
+          filteredEntities.push(updatedEntity);
+        }
+      }
 
       if (collisionDetected) {
-        // End the game on next frame
         setTimeout(gameOver, 0);
         return prev;
+      }
+
+      // Handle spawning in same update
+      spawnTimerRef.current -= deltaTime;
+      let finalEntities = filteredEntities;
+      
+      if (spawnTimerRef.current <= 0) {
+        const newEntities = spawnWave();
+        finalEntities = [...filteredEntities, ...newEntities];
+        
+        const baseInterval = 1.2 + Math.random() * 0.8;
+        const speedMultiplier = 1 + Math.min(newTime * 0.015, 1.2);
+        const nextInterval = baseInterval / speedMultiplier;
+        const minGapTime = MIN_VERTICAL_GAP * 1.5 / newSpeed;
+        
+        spawnTimerRef.current = Math.max(nextInterval, minGapTime);
       }
 
       return {
@@ -281,30 +300,12 @@ export const GameEngine = () => {
         score: newScore + scoreBonus,
         speed: newSpeed,
         playerX: newPlayerX,
-        entities: entitiesAfterCollision
+        entities: finalEntities
       };
     });
 
-    // Handle spawning
-    spawnTimerRef.current -= deltaTime;
-    if (spawnTimerRef.current <= 0) {
-      const newEntities = spawnWave();
-      setGameState(prev => ({
-        ...prev,
-        entities: [...prev.entities, ...newEntities]
-      }));
-      
-      // Set next spawn time with more breathing room for high-speed gameplay
-      const baseInterval = 1.2 + Math.random() * (2.0 - 1.2); // Much longer intervals (1.2-2.0s)
-      const speedMultiplier = 1 + Math.min(gameState.time * 0.015, 1.2); // Slower acceleration of frequency
-      const nextInterval = baseInterval / speedMultiplier;
-      const minGapTime = (MIN_VERTICAL_GAP * 1.8) / gameState.speed; // 80% more gap
-      
-      spawnTimerRef.current = Math.max(nextInterval, minGapTime);
-    }
-
     gameLoopRef.current = requestAnimationFrame(gameLoop);
-  }, [gameState.isRunning, gameState.time, gameState.speed, input, spawnWave, gameOver]);
+  }, [gameState.isRunning, input, spawnWave, gameOver]);
 
   // Keyboard input handling
   useEffect(() => {
@@ -393,7 +394,7 @@ export const GameEngine = () => {
           />
         </div>
 
-        {/* <EmberEffect /> - Temporarily disabled for performance */}
+        
 
         {/* Game entities */}
         <div className="absolute inset-0 z-10">
