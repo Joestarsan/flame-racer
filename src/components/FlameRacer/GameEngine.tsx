@@ -347,46 +347,14 @@ export const GameEngine = () => {
         role="application"
         aria-label="Flame Racer Game"
       >
-        {/* Static Cosmic Background */}
+        {/* Simple blue gradient background */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          {/* Static stars */}
-          {Array.from({ length: 80 }).map((_, i) => (
-            <div
-              key={i}
-              className="absolute bg-white rounded-full"
-              style={{
-                left: `${Math.random() * 100}%`,
-                top: `${Math.random() * 100}%`,
-                width: `${Math.random() * 2 + 1}px`,
-                height: `${Math.random() * 2 + 1}px`,
-                opacity: Math.random() * 0.8 + 0.2
-              }}
-            />
-          ))}
-          
-          {/* Nebula gradient overlay */}
           <div 
-            className="absolute inset-0 opacity-25"
+            className="absolute inset-0"
             style={{
-              background: `
-                radial-gradient(ellipse at 25% 25%, hsl(280 80% 40% / 0.15), transparent 50%),
-                radial-gradient(ellipse at 75% 75%, hsl(240 70% 50% / 0.12), transparent 45%),
-                radial-gradient(ellipse at 50% 10%, hsl(300 60% 35% / 0.08), transparent 40%)
-              `
+              background: 'linear-gradient(180deg, hsl(240 60% 15%), hsl(240 80% 8%))'
             }}
           />
-          
-          {/* Speed lines */}
-          {[1, 2, 3, 4].map(i => (
-            <div
-              key={i}
-              className="absolute left-0 right-0 h-px opacity-30"
-              style={{ 
-                top: `${i * (600 / 5)}px`,
-                background: 'linear-gradient(90deg, transparent, hsl(var(--flame-ember) / 0.4), transparent)'
-              }}
-            />
-          ))}
         </div>
 
         <EmberEffect />
