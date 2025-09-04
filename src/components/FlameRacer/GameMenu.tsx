@@ -1,13 +1,60 @@
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { supabase } from "@/integrations/supabase/client";
 
 interface GameMenuProps {
   bestScore: number;
   onStart: () => void;
 }
 
+interface GameResult {
+  id: string;
+  nickname: string;
+  score: number;
+  speed: number;
+  time_played: number;
+  created_at: string;
+}
+
 export const GameMenu = ({ bestScore, onStart }: GameMenuProps) => {
-  const highScores = JSON.parse(localStorage.getItem('flameRacer.highscores') || '[]')
-    .slice(0, 5);
+  const [highScores, setHighScores] = useState<GameResult[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchHighScores = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('game_results')
+        .select('*')
+        .order('score', { ascending: false })
+        .limit(5);
+
+      if (error) throw error;
+      setHighScores(data || []);
+    } catch (error) {
+      console.error('Error fetching high scores:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchHighScores();
+    
+    // Set up real-time subscription for high scores
+    const subscription = supabase
+      .channel('game_results_menu')
+      .on('postgres_changes', 
+        { event: 'INSERT', schema: 'public', table: 'game_results' },
+        () => {
+          fetchHighScores(); // Refresh when new score is added
+        }
+      )
+      .subscribe();
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
 
   return (
     <div className="absolute inset-0 flex items-center justify-center z-40">
@@ -30,19 +77,32 @@ export const GameMenu = ({ bestScore, onStart }: GameMenuProps) => {
             collect sparks, and show why FogoChain is fast.
           </p>
 
-          {highScores.length > 0 && (
-            <div className="mb-6 p-4 bg-white/5 border border-white/10 rounded-xl">
-              <h3 className="font-bold mb-3 text-flame-ember">🏆 High Scores</h3>
+          <div className="mb-6 p-4 bg-white/5 border border-white/10 rounded-xl">
+            <h3 className="font-bold mb-3 text-flame-ember">🏆 High Scores</h3>
+            {loading ? (
+              <div className="space-y-2">
+                {[...Array(3)].map((_, i) => (
+                  <div key={i} className="animate-pulse">
+                    <div className="h-6 bg-background/20 rounded"></div>
+                  </div>
+                ))}
+              </div>
+            ) : highScores.length > 0 ? (
               <ol className="text-left max-h-32 overflow-auto space-y-1">
-                {highScores.map((score: number, index: number) => (
-                  <li key={index} className="flex justify-between">
-                    <span>#{index + 1}</span>
-                    <span className="font-mono text-flame-spark">{score}</span>
+                {highScores.map((result, index) => (
+                  <li key={result.id} className="flex justify-between items-center">
+                    <span className="flex items-center space-x-2">
+                      <span className="text-muted-foreground">#{index + 1}</span>
+                      <span className="font-medium">{result.nickname}</span>
+                    </span>
+                    <span className="font-mono text-flame-spark font-bold">{result.score.toLocaleString()}</span>
                   </li>
                 ))}
               </ol>
-            </div>
-          )}
+            ) : (
+              <p className="text-muted-foreground text-sm">No scores yet. Be the first!</p>
+            )}
+          </div>
 
           <Button
             onClick={onStart}
