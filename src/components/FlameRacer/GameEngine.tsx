@@ -73,75 +73,80 @@ export const GameEngine = () => {
     a.y < b.y + b.height && 
     a.y + a.height > b.y;
 
-  const spawnWave = useCallback((t: number, speed: number, safeLane: number) => {
-    // Fair, deterministic wave generator with guaranteed corridor
-    const corridor = t < 18 ? 2 : 1; // early game: 2 lanes safe
-    const delta = Math.floor(Math.random() * 3) - 1; // -1, 0, 1
-    const nextSafe = clamp(safeLane + delta, 0, LANE_COUNT - corridor);
-
-    // Lanes availability map (false = free, true = reserved)
-    const reserved = new Array(LANE_COUNT).fill(false);
-    for (let i = 0; i < corridor; i++) reserved[nextSafe + i] = true; // reserve safe corridor
-
-    const isFree = (l: number) => l >= 0 && l < LANE_COUNT && !reserved[l];
-    const takeWithPadding = (start: number, width: number) => {
-      for (let l = start - 1; l <= start + width; l++) {
-        if (l >= 0 && l < LANE_COUNT) reserved[l] = true; // 1-lane gap on both sides
-      }
-    };
+  const spawnWave = useCallback(() => {
+    const corridor = gameState.time < 20 ? 2 : 1;
+    const delta = Math.floor(Math.random() * 3) - 1;
+    const nextSafe = clamp(safeLaneRef.current + delta, 0, LANE_COUNT - corridor);
+    
+    const freeLanes = new Array(LANE_COUNT).fill(true);
+    for (let i = 0; i < corridor; i++) {
+      freeLanes[nextSafe + i] = false;
+    }
 
     const newEntities: Entity[] = [];
+    let lane = 0;
+    let placed = 0;
+    let streak = 0;
 
-    // Helper to pick a spot considering width preference (2 first, then 1)
-    const pickSpot = (): { start: number; width: number } | null => {
-      const candidates: { start: number; width: number }[] = [];
-      for (let l = 0; l < LANE_COUNT; l++) {
-        if (!isFree(l)) continue;
-        const canDouble = isFree(l + 1);
-        if (canDouble) candidates.push({ start: l, width: 2 });
-        candidates.push({ start: l, width: 1 });
+    while (lane < LANE_COUNT && placed < 3) {
+      if (!freeLanes[lane]) {
+        streak = 0;
+        lane++;
+        continue;
       }
-      if (!candidates.length) return null;
-      return candidates[Math.floor(Math.random() * candidates.length)];
-    };
 
-    // Place up to two obstacles
-    for (let n = 0; n < 2; n++) {
-      const spot = pickSpot();
-      if (!spot) break;
-      takeWithPadding(spot.start, spot.width);
+      const canDouble = Math.random() < 0.22 && 
+                       lane + 1 < LANE_COUNT && 
+                       freeLanes[lane + 1] && 
+                       streak < 1;
+      
+      const width = canDouble ? 2 : 1;
+      
+      if (streak + width >= 3) {
+        streak = 0;
+        lane++;
+        continue;
+      }
 
       const obstacleTypes = ['spam', 'latency', 'mev', 'reorg', 'fee'] as const;
       const obstacleType = obstacleTypes[Math.floor(Math.random() * obstacleTypes.length)];
 
       newEntities.push({
-        id: `obstacle-${Date.now()}-${spot.start}`,
-        x: spot.start * LANE_WIDTH + 5,
-        y: -72,
-        width: LANE_WIDTH * spot.width - 10,
-        height: 60 + Math.random() * 24,
+        id: `obstacle-${Date.now()}-${lane}`,
+        x: lane * LANE_WIDTH + 5,
+        y: -60,
+        width: LANE_WIDTH * width - 10,
+        height: 46 + Math.random() * 18,
         type: 'obstacle',
         obstacleType,
-        speed,
+        speed: gameState.speed
       });
+
+      for (let k = 0; k < width; k++) {
+        freeLanes[lane + k] = false;
+      }
+
+      placed++;
+      streak += width;
+      lane += width + (Math.random() < 0.15 ? 1 : 0);
     }
 
-    // Bonus placed inside the safe corridor to guide the path
-    if (Math.random() < 0.45) {
-      const bonusLane = nextSafe + (corridor > 1 ? (Math.random() < 0.5 ? 0 : 1) : 0);
+    if (Math.random() < 0.35) {
+      const bonusLane = nextSafe + (corridor > 1 && Math.random() < 0.5 ? 1 : 0);
       newEntities.push({
         id: `bonus-${Date.now()}`,
-        x: bonusLane * LANE_WIDTH + (LANE_WIDTH - 32) / 2,
-        y: -32,
-        width: 32,
-        height: 32,
+        x: bonusLane * LANE_WIDTH + (LANE_WIDTH - 26) / 2,
+        y: -26,
+        width: 26,
+        height: 26,
         type: 'bonus',
-        speed: speed * 0.9,
+        speed: gameState.speed * 0.9
       });
     }
 
-    return { entities: newEntities, nextSafe };
-  }, []);
+    safeLaneRef.current = nextSafe;
+    return newEntities;
+  }, [gameState.speed, gameState.time]);
 
   const startGame = useCallback(() => {
     setGameState(prev => ({
@@ -178,17 +183,13 @@ export const GameEngine = () => {
   const gameLoop = useCallback((currentTime: number) => {
     if (!gameState.isRunning) return;
 
-    // Fixed timestep for smooth movement
-    const deltaTime = 1 / 60;
+    const deltaTime = Math.min((currentTime - lastTimeRef.current) / 1000, 0.066);
     lastTimeRef.current = currentTime;
 
     setGameState(prev => {
-      const newTime = Math.max(prev.time + deltaTime, 0);
-      const newScore = Math.max(0, prev.score + deltaTime * 60);
-      const newSpeed = Math.max(
-        BASE_SCROLL_SPEED,
-        BASE_SCROLL_SPEED * (1 + Math.min(newTime * 0.03, 2.2))
-      );
+      const newTime = prev.time + deltaTime;
+      const newScore = prev.score + deltaTime * 60;
+      const newSpeed = BASE_SCROLL_SPEED * (1 + Math.min(newTime * 0.03, 2.2));
 
       // Update player position
       const direction = (input.right ? 1 : 0) - (input.left ? 1 : 0);
@@ -199,45 +200,32 @@ export const GameEngine = () => {
         GAME_WIDTH - 42
       );
 
-      // Move entities
-      const moved = prev.entities
-        .map(entity => ({ ...entity, y: entity.y + entity.speed * deltaTime }))
+      // Update entities
+      const updatedEntities = prev.entities
+        .map(entity => ({
+          ...entity,
+          y: entity.y + entity.speed * deltaTime
+        }))
         .filter(entity => entity.y < GAME_HEIGHT + 100 && !entity.dead);
 
-      // Collisions
+      // Check collisions
       const playerRect = { x: newPlayerX, y: GAME_HEIGHT - 110, width: 42, height: 60 };
+      
       let collisionDetected = false;
       let scoreBonus = 0;
-
-      const afterCollision = moved
-        .map(entity => {
-          if (entity.type === 'obstacle' && checkCollision(playerRect, entity)) {
-            collisionDetected = true;
-          } else if (entity.type === 'bonus' && !entity.dead && checkCollision(playerRect, entity)) {
-            scoreBonus += 50;
-            return { ...entity, dead: true };
-          }
-          return entity;
-        })
-        .filter(entity => !entity.dead);
-
-      // Spawning with current, not stale values
-      spawnTimerRef.current -= deltaTime;
-      let finalEntities = afterCollision;
-      if (spawnTimerRef.current <= 0) {
-        const res = spawnWave(newTime, newSpeed, safeLaneRef.current);
-        finalEntities = [...finalEntities, ...res.entities];
-        safeLaneRef.current = res.nextSafe;
-
-        // Next interval
-        const baseInterval = 0.55 + Math.random() * (1.0 - 0.55);
-        const speedMultiplier = 1 + Math.min(newTime * 0.015, 1.1);
-        const nextInterval = baseInterval / speedMultiplier;
-        const minGapTime = (MIN_VERTICAL_GAP * 1.1) / newSpeed;
-        spawnTimerRef.current = Math.max(nextInterval, minGapTime);
-      }
+      
+      const entitiesAfterCollision = updatedEntities.map(entity => {
+        if (entity.type === 'obstacle' && checkCollision(playerRect, entity)) {
+          collisionDetected = true;
+        } else if (entity.type === 'bonus' && !entity.dead && checkCollision(playerRect, entity)) {
+          scoreBonus += 50;
+          return { ...entity, dead: true };
+        }
+        return entity;
+      }).filter(entity => !entity.dead);
 
       if (collisionDetected) {
+        // End the game on next frame
         setTimeout(gameOver, 0);
         return prev;
       }
@@ -248,9 +236,27 @@ export const GameEngine = () => {
         score: newScore + scoreBonus,
         speed: newSpeed,
         playerX: newPlayerX,
-        entities: finalEntities
+        entities: entitiesAfterCollision
       };
     });
+
+    // Handle spawning
+    spawnTimerRef.current -= deltaTime;
+    if (spawnTimerRef.current <= 0) {
+      const newEntities = spawnWave();
+      setGameState(prev => ({
+        ...prev,
+        entities: [...prev.entities, ...newEntities]
+      }));
+      
+      // Set next spawn time with guaranteed minimum gap
+      const baseInterval = 0.42 + Math.random() * (0.95 - 0.42);
+      const speedMultiplier = 1 + Math.min(gameState.time * 0.02, 1.4);
+      const nextInterval = baseInterval / speedMultiplier;
+      const minGapTime = MIN_VERTICAL_GAP / gameState.speed;
+      
+      spawnTimerRef.current = Math.max(nextInterval, minGapTime);
+    }
 
     gameLoopRef.current = requestAnimationFrame(gameLoop);
   }, [gameState.isRunning, gameState.time, gameState.speed, input, spawnWave, gameOver]);

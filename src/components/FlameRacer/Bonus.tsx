@@ -9,8 +9,8 @@ export const Bonus = ({ x, y }: BonusProps) => {
       className="absolute z-15 rounded-full animate-fade-in will-change-transform"
       style={{
         transform: `translate3d(${x}px, ${y}px, 0)`,
-        width: '32px',
-        height: '32px',
+        width: '26px',
+        height: '26px',
         background: `
           radial-gradient(60% 60% at 50% 35%, rgba(255, 255, 255, 0.9), transparent 65%),
           radial-gradient(100% 100% at 50% 70%, hsl(var(--flame-spark)), transparent 62%),
