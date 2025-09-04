@@ -393,7 +393,7 @@ export const GameEngine = () => {
           />
         </div>
 
-        <EmberEffect />
+        {/* <EmberEffect /> - Temporarily disabled for performance */}
 
         {/* Game entities */}
         <div className="absolute inset-0 z-10">
