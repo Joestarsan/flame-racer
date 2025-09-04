@@ -93,8 +93,8 @@ export const GameEngine = () => {
     const chosen: number[] = [];
     for (const lane of candidates) {
       if (chosen.length >= 2) break; // at most two obstacles
-      // ensure spacing between chosen lanes
-      if (chosen.some(c => Math.abs(c - lane) < 1)) continue;
+      // ensure spacing: keep at least one empty lane between obstacles
+      if (chosen.some(c => Math.abs(c - lane) < 2)) continue;
       chosen.push(lane);
     }
 
@@ -216,6 +216,7 @@ export const GameEngine = () => {
       
       const entitiesAfterCollision = updatedEntities.map(entity => {
         if (entity.type === 'obstacle' && checkCollision(playerRect, entity)) {
+          console.warn('[FlameRacer] Collision', { playerRect, entity });
           collisionDetected = true;
         } else if (entity.type === 'bonus' && !entity.dead && checkCollision(playerRect, entity)) {
           scoreBonus += 50;
@@ -249,11 +250,11 @@ export const GameEngine = () => {
         entities: [...prev.entities, ...newEntities]
       }));
       
-        // Set next spawn time with guaranteed minimum gap - увеличиваем интервалы
-        const baseInterval = 0.8 + Math.random() * (1.4 - 0.8); // Больше интервал
-        const speedMultiplier = 1 + Math.min(gameState.time * 0.015, 1.2); // Медленнее ускорение
-        const nextInterval = baseInterval / speedMultiplier;
-        const minGapTime = (MIN_VERTICAL_GAP * 1.5) / gameState.speed; // Больше минимальный зазор
+      // Set next spawn time with guaranteed minimum gap - tuned for smoother flow
+      const baseInterval = 0.55 + Math.random() * (1.0 - 0.55);
+      const speedMultiplier = 1 + Math.min(gameState.time * 0.015, 1.1);
+      const nextInterval = baseInterval / speedMultiplier;
+      const minGapTime = (MIN_VERTICAL_GAP * 1.1) / gameState.speed;
       
       spawnTimerRef.current = Math.max(nextInterval, minGapTime);
     }

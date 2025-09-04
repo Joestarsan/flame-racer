@@ -6,10 +6,9 @@ interface BonusProps {
 export const Bonus = ({ x, y }: BonusProps) => {
   return (
     <div
-      className="absolute z-15 rounded-full animate-pulse"
+      className="absolute z-15 rounded-full animate-fade-in will-change-transform"
       style={{
-        left: `${x}px`,
-        top: `${y}px`,
+        transform: `translate3d(${x}px, ${y}px, 0)`,
         width: '32px',
         height: '32px',
         background: `

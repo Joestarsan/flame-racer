@@ -49,10 +49,9 @@ export const Obstacle = ({ x, y, width, height, type }: ObstacleProps) => {
   
   return (
     <div
-      className={`absolute z-10 rounded-xl ${style.border} border-2 backdrop-blur-sm flex flex-col items-center justify-center text-center transition-all duration-300 hover:scale-105`}
+      className={`absolute z-10 rounded-xl ${style.border} border-2 backdrop-blur-sm flex flex-col items-center justify-center text-center transition-all duration-300 hover:scale-105 animate-fade-in will-change-transform`}
       style={{
-        left: `${x}px`,
-        top: `${y}px`,
+        transform: `translate3d(${x}px, ${y}px, 0)`,
         width: `${width}px`,
         height: `${height}px`,
         background: style.bg,
