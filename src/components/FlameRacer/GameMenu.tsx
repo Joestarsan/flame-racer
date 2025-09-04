@@ -22,14 +22,30 @@ export const GameMenu = ({ bestScore, onStart }: GameMenuProps) => {
 
   const fetchHighScores = async () => {
     try {
+      // Get best score for each unique nickname
       const { data, error } = await supabase
         .from('game_results')
-        .select('*')
-        .order('score', { ascending: false })
-        .limit(5);
+        .select('nickname, score, speed, time_played, created_at')
+        .order('score', { ascending: false });
 
       if (error) throw error;
-      setHighScores(data || []);
+      
+      // Group by nickname and keep only the best score for each
+      const uniqueResults = new Map<string, GameResult>();
+      
+      (data || []).forEach((result: GameResult) => {
+        const existing = uniqueResults.get(result.nickname);
+        if (!existing || result.score > existing.score) {
+          uniqueResults.set(result.nickname, result);
+        }
+      });
+      
+      // Convert back to array and sort by score, take top 5
+      const topResults = Array.from(uniqueResults.values())
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 5);
+      
+      setHighScores(topResults);
     } catch (error) {
       console.error('Error fetching high scores:', error);
     } finally {
