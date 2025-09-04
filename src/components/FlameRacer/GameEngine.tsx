@@ -35,7 +35,7 @@ interface GameState {
 }
 
 const LANE_COUNT = 5;
-const BASE_SCROLL_SPEED = 300;
+const BASE_SCROLL_SPEED = 500;
 const PLAYER_SPEED_X = 720;
 const MIN_VERTICAL_GAP = 120;
 const TARGET_FPS = 60;
