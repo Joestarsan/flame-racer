@@ -60,6 +60,9 @@ export const GameEngine = () => {
   const lastTimeRef = useRef<number>(0);
   const spawnTimerRef = useRef<number>(0);
   const safeLaneRef = useRef<number>(Math.floor(LANE_COUNT / 2));
+  const accumulatorRef = useRef<number>(0);
+  const FIXED_DT = 1 / 60;
+  const MAX_STEPS = 5;
 
   const clamp = (value: number, min: number, max: number) => 
     Math.min(Math.max(value, min), max);
@@ -70,11 +73,11 @@ export const GameEngine = () => {
     a.y < b.y + b.height && 
     a.y + a.height > b.y;
 
-  const spawnWave = useCallback(() => {
+  const spawnWave = useCallback((t: number, speed: number, safeLane: number) => {
     // Fair, deterministic wave generator with guaranteed corridor
-    const corridor = gameState.time < 18 ? 2 : 1; // early game: 2 lanes safe
+    const corridor = t < 18 ? 2 : 1; // early game: 2 lanes safe
     const delta = Math.floor(Math.random() * 3) - 1; // -1, 0, 1
-    const nextSafe = clamp(safeLaneRef.current + delta, 0, LANE_COUNT - corridor);
+    const nextSafe = clamp(safeLane + delta, 0, LANE_COUNT - corridor);
 
     // Lanes availability map (false = free, true = reserved)
     const reserved = new Array(LANE_COUNT).fill(false);
@@ -119,7 +122,7 @@ export const GameEngine = () => {
         height: 60 + Math.random() * 24,
         type: 'obstacle',
         obstacleType,
-        speed: gameState.speed,
+        speed,
       });
     }
 
@@ -133,13 +136,12 @@ export const GameEngine = () => {
         width: 32,
         height: 32,
         type: 'bonus',
-        speed: gameState.speed * 0.9,
+        speed: speed * 0.9,
       });
     }
 
-    safeLaneRef.current = nextSafe;
-    return newEntities;
-  }, [gameState.speed, gameState.time]);
+    return { entities: newEntities, nextSafe };
+  }, []);
 
   const startGame = useCallback(() => {
     setGameState(prev => ({
@@ -197,33 +199,45 @@ export const GameEngine = () => {
         GAME_WIDTH - 42
       );
 
-      // Update entities
-      const updatedEntities = prev.entities
-        .map(entity => ({
-          ...entity,
-          y: entity.y + entity.speed * deltaTime
-        }))
+      // Move entities
+      const moved = prev.entities
+        .map(entity => ({ ...entity, y: entity.y + entity.speed * deltaTime }))
         .filter(entity => entity.y < GAME_HEIGHT + 100 && !entity.dead);
 
-      // Check collisions
+      // Collisions
       const playerRect = { x: newPlayerX, y: GAME_HEIGHT - 110, width: 42, height: 60 };
-      
       let collisionDetected = false;
       let scoreBonus = 0;
-      
-      const entitiesAfterCollision = updatedEntities.map(entity => {
-        if (entity.type === 'obstacle' && checkCollision(playerRect, entity)) {
-          console.warn('[FlameRacer] Collision', { playerRect, entity });
-          collisionDetected = true;
-        } else if (entity.type === 'bonus' && !entity.dead && checkCollision(playerRect, entity)) {
-          scoreBonus += 50;
-          return { ...entity, dead: true };
-        }
-        return entity;
-      }).filter(entity => !entity.dead);
+
+      const afterCollision = moved
+        .map(entity => {
+          if (entity.type === 'obstacle' && checkCollision(playerRect, entity)) {
+            collisionDetected = true;
+          } else if (entity.type === 'bonus' && !entity.dead && checkCollision(playerRect, entity)) {
+            scoreBonus += 50;
+            return { ...entity, dead: true };
+          }
+          return entity;
+        })
+        .filter(entity => !entity.dead);
+
+      // Spawning with current, not stale values
+      spawnTimerRef.current -= deltaTime;
+      let finalEntities = afterCollision;
+      if (spawnTimerRef.current <= 0) {
+        const res = spawnWave(newTime, newSpeed, safeLaneRef.current);
+        finalEntities = [...finalEntities, ...res.entities];
+        safeLaneRef.current = res.nextSafe;
+
+        // Next interval
+        const baseInterval = 0.55 + Math.random() * (1.0 - 0.55);
+        const speedMultiplier = 1 + Math.min(newTime * 0.015, 1.1);
+        const nextInterval = baseInterval / speedMultiplier;
+        const minGapTime = (MIN_VERTICAL_GAP * 1.1) / newSpeed;
+        spawnTimerRef.current = Math.max(nextInterval, minGapTime);
+      }
 
       if (collisionDetected) {
-        // End the game on next frame
         setTimeout(gameOver, 0);
         return prev;
       }
@@ -234,27 +248,9 @@ export const GameEngine = () => {
         score: newScore + scoreBonus,
         speed: newSpeed,
         playerX: newPlayerX,
-        entities: entitiesAfterCollision
+        entities: finalEntities
       };
     });
-
-    // Handle spawning
-    spawnTimerRef.current -= deltaTime;
-    if (spawnTimerRef.current <= 0) {
-      const newEntities = spawnWave();
-      setGameState(prev => ({
-        ...prev,
-        entities: [...prev.entities, ...newEntities]
-      }));
-      
-      // Set next spawn time with guaranteed minimum gap - tuned for smoother flow
-      const baseInterval = 0.55 + Math.random() * (1.0 - 0.55);
-      const speedMultiplier = 1 + Math.min(gameState.time * 0.015, 1.1);
-      const nextInterval = baseInterval / speedMultiplier;
-      const minGapTime = (MIN_VERTICAL_GAP * 1.1) / gameState.speed;
-      
-      spawnTimerRef.current = Math.max(nextInterval, minGapTime);
-    }
 
     gameLoopRef.current = requestAnimationFrame(gameLoop);
   }, [gameState.isRunning, gameState.time, gameState.speed, input, spawnWave, gameOver]);
