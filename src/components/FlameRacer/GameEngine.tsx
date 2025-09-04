@@ -77,8 +77,8 @@ export const GameEngine = () => {
   // Responsive game dimensions based on viewport (keeps 3:2 aspect ratio)
   const { gameWidth, gameHeight, laneWidth } = useMemo(() => {
     const padding = isMobile ? 0 : 32;
-    const maxW = Math.max(320, Math.min(900, viewport.w - padding));
-    const maxH = Math.max(220, Math.min(600, viewport.h - padding));
+    const maxW = Math.max(320, Math.min(1200, viewport.w - padding));
+    const maxH = Math.max(220, Math.min(800, viewport.h - padding));
     const width = Math.min(maxW, Math.floor(maxH * 3 / 2)); // fit by height if needed
     const height = Math.floor(width * 2 / 3);
     return { gameWidth: width, gameHeight: height, laneWidth: width / LANE_COUNT };
@@ -254,7 +254,7 @@ export const GameEngine = () => {
     setGameState(prev => {
       const newTime = prev.time + deltaTime;
       const newScore = prev.score + deltaTime * 60;
-      const newSpeed = BASE_SCROLL_SPEED * (1 + Math.min(newTime * 0.07, 9.2));
+      const newSpeed = BASE_SCROLL_SPEED * (1 + Math.min(newTime * 0.05, 2.2));
 
       // Update player position
       const direction = (input.right ? 1 : 0) - (input.left ? 1 : 0);
