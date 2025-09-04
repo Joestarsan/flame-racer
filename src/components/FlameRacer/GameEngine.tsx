@@ -71,32 +71,38 @@ export const GameEngine = () => {
     a.y + a.height > b.y;
 
   const spawnWave = useCallback(() => {
-    const corridor = gameState.time < 20 ? 3 : 2; // Больше свободного места
+    // Reserve a safe corridor so there is always a passable path
+    const corridor = gameState.time < 15 ? 2 : 1;
     const delta = Math.floor(Math.random() * 3) - 1;
     const nextSafe = clamp(safeLaneRef.current + delta, 0, LANE_COUNT - corridor);
-    
-    const freeLanes = new Array(LANE_COUNT).fill(true);
-    for (let i = 0; i < corridor; i++) {
-      freeLanes[nextSafe + i] = false;
-    }
+
+    const blocked = new Set<number>();
+    for (let i = 0; i < corridor; i++) blocked.add(nextSafe + i);
+
+    const freeLanes = Array.from({ length: LANE_COUNT }, (_, i) => !blocked.has(i));
+    const candidates = freeLanes.map((ok, i) => (ok ? i : -1)).filter(i => i >= 0);
 
     const newEntities: Entity[] = [];
-    let lane = 0;
-    let placed = 0;
 
-    // Максимум 2 препятствия в волне, больших размеров
-    while (lane < LANE_COUNT && placed < 2) {
-      if (!freeLanes[lane]) {
-        lane++;
-        continue;
-      }
+    // Shuffle candidates to vary placement
+    for (let i = candidates.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
+    }
 
-      // Чаще делаем двойные препятствия для более крупных блоков
-      const canDouble = Math.random() < 0.6 && 
-                       lane + 1 < LANE_COUNT && 
-                       freeLanes[lane + 1];
-      
-      const width = canDouble ? 2 : 1;
+    const chosen: number[] = [];
+    for (const lane of candidates) {
+      if (chosen.length >= 2) break; // at most two obstacles
+      // ensure spacing between chosen lanes
+      if (chosen.some(c => Math.abs(c - lane) < 1)) continue;
+      chosen.push(lane);
+    }
+
+    // Create bigger obstacles on chosen lanes (try to make some 2-lane wide)
+    for (const lane of chosen) {
+      const canDouble = lane + 1 < LANE_COUNT && freeLanes[lane + 1];
+      const width = canDouble && Math.random() < 0.5 ? 2 : 1;
+      for (let k = 0; k < width; k++) if (lane + k < LANE_COUNT) freeLanes[lane + k] = false;
 
       const obstacleTypes = ['spam', 'latency', 'mev', 'reorg', 'fee'] as const;
       const obstacleType = obstacleTypes[Math.floor(Math.random() * obstacleTypes.length)];
@@ -104,33 +110,26 @@ export const GameEngine = () => {
       newEntities.push({
         id: `obstacle-${Date.now()}-${lane}`,
         x: lane * LANE_WIDTH + 5,
-        y: -80, // Выше стартовая позиция
+        y: -72,
         width: LANE_WIDTH * width - 10,
-        height: 60 + Math.random() * 25, // Больше высота
+        height: 60 + Math.random() * 24,
         type: 'obstacle',
         obstacleType,
-        speed: gameState.speed
+        speed: gameState.speed,
       });
-
-      for (let k = 0; k < width; k++) {
-        freeLanes[lane + k] = false;
-      }
-
-      placed++;
-      lane += width + 1; // Больше промежуток между препятствиями
     }
 
-    // Бонусы реже но больше
+    // Bonus a bit larger and visible
     if (Math.random() < 0.4) {
       const bonusLane = nextSafe + (corridor > 1 && Math.random() < 0.5 ? 1 : 0);
       newEntities.push({
         id: `bonus-${Date.now()}`,
         x: bonusLane * LANE_WIDTH + (LANE_WIDTH - 32) / 2,
         y: -32,
-        width: 32, // Больше бонусы
+        width: 32,
         height: 32,
         type: 'bonus',
-        speed: gameState.speed * 0.9
+        speed: gameState.speed * 0.9,
       });
     }
 
