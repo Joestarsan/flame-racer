@@ -2,7 +2,6 @@ import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGame } from '@/contexts/GameContext';
 import { GameEngine } from "@/components/FlameRacer/GameEngine";
-import { Leaderboard } from "@/components/FlameRacer/Leaderboard";
 import { Button } from '@/components/ui/button';
 import { LogOut, User } from 'lucide-react';
 
@@ -44,18 +43,8 @@ const Index = () => {
         </Button>
       </div>
 
-      {/* Game and Leaderboard Layout */}
-      <div className="flex flex-col lg:flex-row min-h-screen">
-        {/* Game Area */}
-        <div className="flex-1 flex items-center justify-center p-4">
-          <GameEngine />
-        </div>
-        
-        {/* Leaderboard Sidebar */}
-        <div className="lg:w-80 p-4 lg:overflow-y-auto">
-          <Leaderboard />
-        </div>
-      </div>
+      {/* Just the Game - no sidebar */}
+      <GameEngine />
     </div>
   );
 };

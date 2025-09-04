@@ -369,18 +369,18 @@ export const GameEngine = () => {
     };
   }, [gameState.isRunning, gameLoop]);
 
-  return (
-    <div className="min-h-screen flex items-center justify-center p-4">
-      <div 
-        ref={gameRef}
-        className="relative w-[900px] h-[600px] mx-auto rounded-3xl game-surface overflow-hidden"
-        style={{
-          transform: `scale(${Math.min((window.innerWidth - 32) / 900, (window.innerHeight - 32) / 600)})`
-        }}
-        tabIndex={0}
-        role="application"
-        aria-label="Flame Racer Game"
-      >
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <div 
+          ref={gameRef}
+          className="relative w-[900px] h-[600px] mx-auto rounded-3xl game-surface overflow-hidden"
+          style={{
+            transform: `scale(${Math.min((window.innerWidth - 32) / 900, (window.innerHeight - 32) / 600)})`
+          }}
+          tabIndex={0}
+          role="application"
+          aria-label="Flame Racer Game"
+        >
         {/* Simple blue gradient background */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <div 
