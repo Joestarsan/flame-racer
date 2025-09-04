@@ -75,35 +75,54 @@ export const GameEngine = () => {
     const delta = Math.floor(Math.random() * 3) - 1;
     const nextSafe = clamp(safeLaneRef.current + delta, 0, LANE_COUNT - corridor);
     
+    // Mark safe lanes (guaranteed passage)
     const freeLanes = new Array(LANE_COUNT).fill(true);
     for (let i = 0; i < corridor; i++) {
       freeLanes[nextSafe + i] = false;
     }
 
     const newEntities: Entity[] = [];
-    let lane = 0;
+    
+    // Improved obstacle generation - less dense, more strategic
+    const maxObstacles = gameState.time < 30 ? 2 : 3; // Start with fewer obstacles
     let placed = 0;
-    let streak = 0;
-
-    while (lane < LANE_COUNT && placed < 3) {
-      if (!freeLanes[lane]) {
-        streak = 0;
-        lane++;
-        continue;
+    
+    // Get available lanes for obstacles (excluding safe corridor)
+    const availableLanes = [];
+    for (let i = 0; i < LANE_COUNT; i++) {
+      if (freeLanes[i]) {
+        availableLanes.push(i);
       }
-
-      const canDouble = Math.random() < 0.22 && 
+    }
+    
+    // Shuffle available lanes for random distribution
+    for (let i = availableLanes.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [availableLanes[i], availableLanes[j]] = [availableLanes[j], availableLanes[i]];
+    }
+    
+    // Place obstacles with spacing
+    for (let i = 0; i < Math.min(maxObstacles, availableLanes.length) && placed < maxObstacles; i++) {
+      const lane = availableLanes[i];
+      
+      // Reduce chance of double-wide obstacles
+      const canDouble = Math.random() < 0.15 && 
                        lane + 1 < LANE_COUNT && 
-                       freeLanes[lane + 1] && 
-                       streak < 1;
+                       freeLanes[lane + 1] &&
+                       !availableLanes.slice(0, i).includes(lane + 1); // Don't overlap with other obstacles
       
       const width = canDouble ? 2 : 1;
       
-      if (streak + width >= 3) {
-        streak = 0;
-        lane++;
-        continue;
+      // Skip if would overlap with other obstacles
+      let canPlace = true;
+      for (let k = 0; k < width; k++) {
+        if (!freeLanes[lane + k]) {
+          canPlace = false;
+          break;
+        }
       }
+      
+      if (!canPlace) continue;
 
       const obstacleTypes = ['spam', 'latency', 'mev', 'reorg', 'fee'] as const;
       const obstacleType = obstacleTypes[Math.floor(Math.random() * obstacleTypes.length)];
@@ -119,17 +138,16 @@ export const GameEngine = () => {
         speed: gameState.speed
       });
 
+      // Mark used lanes
       for (let k = 0; k < width; k++) {
         freeLanes[lane + k] = false;
       }
 
       placed++;
-      streak += width;
-      lane += width + (Math.random() < 0.15 ? 1 : 0);
     }
 
-    // Add bonus
-    if (Math.random() < 0.35) {
+    // Add bonus with higher chance in safe corridor
+    if (Math.random() < 0.4) {
       const bonusLane = nextSafe + (corridor > 1 && Math.random() < 0.5 ? 1 : 0);
       newEntities.push({
         id: `bonus-${Date.now()}`,
