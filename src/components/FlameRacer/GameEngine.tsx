@@ -83,8 +83,8 @@ export const GameEngine = () => {
 
     const newEntities: Entity[] = [];
     
-    // Improved obstacle generation - fewer but larger obstacles
-    const maxObstacles = gameState.time < 30 ? 1 : 2; // Even fewer obstacles
+    // Always single obstacles for consistent gameplay
+    const maxObstacles = 1; // Always just 1 obstacle per wave
     let placed = 0;
     
     // Get available lanes for obstacles (excluding safe corridor)
@@ -105,13 +105,9 @@ export const GameEngine = () => {
     for (let i = 0; i < Math.min(maxObstacles, availableLanes.length) && placed < maxObstacles; i++) {
       const lane = availableLanes[i];
       
-      // Higher chance of double-wide obstacles for bigger blocks
-      const canDouble = Math.random() < 0.6 && 
-                       lane + 1 < LANE_COUNT && 
-                       freeLanes[lane + 1] &&
-                       !availableLanes.slice(0, i).includes(lane + 1);
-      
-      const width = canDouble ? 2 : 1;
+      // Always single-width obstacles
+      const canDouble = false;
+      const width = 1;
       
       // Skip if would overlap with other obstacles
       let canPlace = true;
@@ -131,8 +127,8 @@ export const GameEngine = () => {
         id: `obstacle-${Date.now()}-${lane}`,
         x: lane * LANE_WIDTH + 5,
         y: -60,
-        width: LANE_WIDTH * width - 10,
-        height: 60 + Math.random() * 30, // Bigger obstacles
+        width: LANE_WIDTH * width - 40, // Narrower obstacles
+        height: 70 + Math.random() * 40, // Taller obstacles (70-110px)
         type: 'obstacle',
         obstacleType,
         speed: gameState.speed
