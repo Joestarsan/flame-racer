@@ -181,13 +181,24 @@ export const GameEngine = () => {
   const gameLoop = useCallback((currentTime: number) => {
     if (!gameState.isRunning) return;
 
-    const deltaTime = Math.min((currentTime - lastTimeRef.current) / 1000, 0.066);
+    const deltaMs = currentTime - lastTimeRef.current;
+    if (deltaMs < 0 || deltaMs > 1000) {
+      console.warn('[FlameRacer] abnormal deltaMs', { deltaMs, currentTime, last: lastTimeRef.current });
+    }
+    let deltaTime = deltaMs / 1000;
+    if (!Number.isFinite(deltaTime) || deltaTime < 0 || deltaTime > 0.5) {
+      deltaTime = 1 / 60; // fallback to ~16ms
+    }
+    deltaTime = Math.min(deltaTime, 0.066);
     lastTimeRef.current = currentTime;
 
     setGameState(prev => {
-      const newTime = prev.time + deltaTime;
-      const newScore = prev.score + deltaTime * 60;
-      const newSpeed = BASE_SCROLL_SPEED * (1 + Math.min(newTime * 0.03, 2.2));
+      const newTime = Math.max(prev.time + deltaTime, 0);
+      const newScore = Math.max(0, prev.score + deltaTime * 60);
+      const newSpeed = Math.max(
+        BASE_SCROLL_SPEED,
+        BASE_SCROLL_SPEED * (1 + Math.min(newTime * 0.03, 2.2))
+      );
 
       // Update player position
       const direction = (input.right ? 1 : 0) - (input.left ? 1 : 0);
