@@ -176,15 +176,8 @@ export const GameEngine = () => {
   const gameLoop = useCallback((currentTime: number) => {
     if (!gameState.isRunning) return;
 
-    const deltaMs = currentTime - lastTimeRef.current;
-    if (deltaMs < 0 || deltaMs > 1000) {
-      console.warn('[FlameRacer] abnormal deltaMs', { deltaMs, currentTime, last: lastTimeRef.current });
-    }
-    let deltaTime = deltaMs / 1000;
-    if (!Number.isFinite(deltaTime) || deltaTime < 0 || deltaTime > 0.5) {
-      deltaTime = 1 / 60; // fallback to ~16ms
-    }
-    deltaTime = Math.min(deltaTime, 0.066);
+    // Fixed timestep for smooth movement
+    const deltaTime = 1 / 60;
     lastTimeRef.current = currentTime;
 
     setGameState(prev => {
