@@ -1,5 +1,5 @@
 import { useEffect, useRef, useCallback, useState } from "react";
-import { useAuth } from "@/contexts/AuthContext";
+import { useGame } from "@/contexts/GameContext";
 import { toast } from "sonner";
 import { Player } from "./Player";
 import { Obstacle } from "./Obstacle";
@@ -43,7 +43,7 @@ const PLAYER_SPEED_X = 520;
 const MIN_VERTICAL_GAP = 120;
 
 export const GameEngine = () => {
-  const { saveGameScore } = useAuth();
+  const { saveGameResult } = useGame();
   const gameRef = useRef<HTMLDivElement>(null);
   const [gameState, setGameState] = useState<GameState>({
     isRunning: false,
@@ -200,17 +200,17 @@ export const GameEngine = () => {
 
     // Save score to database
     try {
-      const { error } = await saveGameScore(finalScore, finalSpeed, finalTime);
+      const { error } = await saveGameResult(finalScore, finalSpeed, finalTime);
       if (error) {
         console.error('Error saving score:', error);
-        toast.error('Не удалось сохранить результат');
+        toast.error('Failed to save result');
       } else {
-        toast.success(`Результат сохранён! Очки: ${finalScore.toLocaleString()}`);
+        toast.success(`Score saved! Points: ${finalScore.toLocaleString()}`);
       }
     } catch (error) {
       console.error('Error saving score:', error);
     }
-  }, [gameState.score, gameState.speed, gameState.time, saveGameScore]);
+  }, [gameState.score, gameState.speed, gameState.time, saveGameResult]);
 
   const gameLoop = useCallback((currentTime: number) => {
     if (!gameState.isRunning) return;

@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Trophy, Medal, Award, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
-interface GameScore {
+interface GameResult {
   id: string;
   nickname: string;
   score: number;
@@ -14,13 +14,13 @@ interface GameScore {
 }
 
 export const Leaderboard = () => {
-  const [scores, setScores] = useState<GameScore[]>([]);
+  const [scores, setScores] = useState<GameResult[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchLeaderboard = async () => {
     try {
       const { data, error } = await supabase
-        .from('game_scores')
+        .from('game_results')
         .select('*')
         .order('score', { ascending: false })
         .limit(10);
@@ -39,9 +39,9 @@ export const Leaderboard = () => {
     
     // Set up real-time subscription
     const subscription = supabase
-      .channel('game_scores_changes')
+      .channel('game_results_changes')
       .on('postgres_changes', 
-        { event: 'INSERT', schema: 'public', table: 'game_scores' },
+        { event: 'INSERT', schema: 'public', table: 'game_results' },
         () => {
           fetchLeaderboard(); // Refresh leaderboard when new score is added
         }
@@ -70,7 +70,7 @@ export const Leaderboard = () => {
     return (
       <Card className="game-surface">
         <CardHeader>
-          <CardTitle className="text-center flame-text">🏆 Таблица лидеров</CardTitle>
+          <CardTitle className="text-center flame-text">🏆 Leaderboard</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-2">
@@ -89,7 +89,7 @@ export const Leaderboard = () => {
     <Card className="game-surface">
       <CardHeader>
         <div className="flex items-center justify-between">
-          <CardTitle className="flame-text">🏆 Лидеры</CardTitle>
+          <CardTitle className="flame-text">🏆 Top Players</CardTitle>
           <Button
             onClick={fetchLeaderboard}
             variant="outline"
@@ -103,8 +103,8 @@ export const Leaderboard = () => {
       <CardContent>
         {scores.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
-            <p>Пока нет результатов</p>
-            <p className="text-sm">Сыграйте первым!</p>
+            <p>No scores yet</p>
+            <p className="text-sm">Be the first to play!</p>
           </div>
         ) : (
           <div className="space-y-2">
@@ -125,14 +125,14 @@ export const Leaderboard = () => {
                   <div>
                     <div className="font-bold text-foreground">{score.nickname}</div>
                     <div className="text-xs text-muted-foreground">
-                      {new Date(score.created_at).toLocaleDateString('ru-RU')}
+                      {new Date(score.created_at).toLocaleDateString('en-US')}
                     </div>
                   </div>
                 </div>
                 <div className="text-right">
                   <div className="font-bold text-lg text-flame-core">{score.score.toLocaleString()}</div>
                   <div className="text-xs text-muted-foreground">
-                    {score.speed.toFixed(1)}x • {score.time_played.toFixed(0)}с
+                    {score.speed.toFixed(1)}x • {score.time_played.toFixed(0)}s
                   </div>
                 </div>
               </div>
