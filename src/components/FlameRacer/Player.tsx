@@ -6,20 +6,20 @@ interface PlayerProps {
 export const Player = ({ x, y }: PlayerProps) => {
   return (
     <div
-      className="absolute z-20 w-[42px] h-[60px] rounded-xl ember-glow origin-bottom animate-glow"
+      className="absolute z-20 w-[42px] h-[60px] origin-bottom animate-glow"
       style={{
         left: `${x}px`,
         top: `${y}px`,
-        background: `
-          radial-gradient(40% 45% at 50% 25%, hsl(var(--foreground) / 0.85), transparent 62%),
-          radial-gradient(75% 70% at 50% 70%, hsl(var(--flame-ember)), transparent 64%),
-          radial-gradient(75% 70% at 50% 70%, hsl(var(--flame-core)), transparent 64%)
-        `,
-        boxShadow: `
-          0 0 20px hsl(var(--flame-core) / 0.55),
-          0 0 40px hsl(var(--flame-hot) / 0.35)
-        `
       }}
-    />
+    >
+      <img 
+        src="/lovable-uploads/4a1807b9-ae14-4689-80c9-18c8258f160f.png" 
+        alt="Flame Player" 
+        className="w-full h-full object-contain filter drop-shadow-lg"
+        style={{
+          filter: 'drop-shadow(0 0 12px hsl(var(--flame-core) / 0.6)) drop-shadow(0 0 24px hsl(var(--flame-hot) / 0.4))'
+        }}
+      />
+    </div>
   );
 };

@@ -340,6 +340,9 @@ export const GameEngine = () => {
       <div 
         ref={gameRef}
         className="relative w-[900px] h-[600px] mx-auto rounded-3xl game-surface overflow-hidden"
+        style={{
+          transform: `scale(${Math.min((window.innerWidth - 32) / 900, (window.innerHeight - 32) / 600)})`
+        }}
         tabIndex={0}
         role="application"
         aria-label="Flame Racer Game"
