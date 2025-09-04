@@ -35,7 +35,7 @@ interface GameState {
 }
 
 const LANE_COUNT = 5;
-const BASE_SCROLL_SPEED = 500;
+const BASE_SCROLL_SPEED = 300;
 const PLAYER_SPEED_X = 720;
 const MIN_VERTICAL_GAP = 120;
 const TARGET_FPS = 60;
@@ -77,8 +77,8 @@ export const GameEngine = () => {
   // Responsive game dimensions based on viewport (keeps 3:2 aspect ratio)
   const { gameWidth, gameHeight, laneWidth } = useMemo(() => {
     const padding = isMobile ? 0 : 32;
-    const maxW = Math.max(320, Math.min(1200, viewport.w - padding));
-    const maxH = Math.max(220, Math.min(800, viewport.h - padding));
+    const maxW = Math.max(320, Math.min(1500, viewport.w - padding));
+    const maxH = Math.max(220, Math.min(1000, viewport.h - padding));
     const width = Math.min(maxW, Math.floor(maxH * 3 / 2)); // fit by height if needed
     const height = Math.floor(width * 2 / 3);
     return { gameWidth: width, gameHeight: height, laneWidth: width / LANE_COUNT };
