@@ -254,7 +254,7 @@ export const GameEngine = () => {
     setGameState(prev => {
       const newTime = prev.time + deltaTime;
       const newScore = prev.score + deltaTime * 60;
-      const newSpeed = BASE_SCROLL_SPEED * (1 + Math.min(newTime * 0.05, 2.2));
+      const newSpeed = BASE_SCROLL_SPEED * (1 + Math.min(newTime * 0.06, 5.2));
 
       // Update player position
       const direction = (input.right ? 1 : 0) - (input.left ? 1 : 0);
