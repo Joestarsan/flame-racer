@@ -141,10 +141,19 @@
   }
   
   .game-surface {
-    background: linear-gradient(180deg, hsl(var(--card) / 0.9), hsl(var(--background-secondary) / 0.9));
-    border: 1px solid hsl(var(--flame-core) / 0.2);
+    background: 
+      radial-gradient(circle at 30% 20%, hsl(280 100% 10% / 0.3), transparent 50%),
+      radial-gradient(circle at 70% 80%, hsl(240 100% 8% / 0.4), transparent 60%),
+      linear-gradient(180deg, hsl(220 30% 5% / 0.95), hsl(220 35% 3% / 0.98));
+    border: 1px solid hsl(var(--flame-core) / 0.3);
     box-shadow: var(--shadow-game);
-    backdrop-filter: blur(8px) saturate(1.1);
+    backdrop-filter: blur(12px) saturate(1.2);
+  }
+  
+  .space-background {
+    background: 
+      radial-gradient(circle at 10% 10%, hsl(280 100% 15% / 0.1), transparent 30%),
+      radial-gradient(circle at 90% 90%, hsl(240 100% 12% / 0.15), transparent 40%);
   }
   
   .stripe-effect {
