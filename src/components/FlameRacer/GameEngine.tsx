@@ -34,10 +34,7 @@ interface GameState {
   entities: Entity[];
 }
 
-const GAME_WIDTH = 900;
-const GAME_HEIGHT = 600;
 const LANE_COUNT = 5;
-const LANE_WIDTH = GAME_WIDTH / LANE_COUNT;
 const BASE_SCROLL_SPEED = 300;
 const PLAYER_SPEED_X = 720;
 const MIN_VERTICAL_GAP = 120;
@@ -56,16 +53,36 @@ export const GameEngine = () => {
     bestScore: parseInt(localStorage.getItem('flameRacer.bestScore') || '0'),
     speed: BASE_SCROLL_SPEED,
     time: 0,
-    playerX: GAME_WIDTH * 0.5 - 21,
+    playerX: 0,
     entities: []
   });
 
   const [input, setInput] = useState({ left: false, right: false });
   const isMobile = useIsMobile();
+  const [viewport, setViewport] = useState({ w: window.innerWidth, h: window.innerHeight });
+  useEffect(() => {
+    const onResize = () => setViewport({ w: window.innerWidth, h: window.innerHeight });
+    window.addEventListener('resize', onResize);
+    window.addEventListener('orientationchange', onResize);
+    return () => {
+      window.removeEventListener('resize', onResize);
+      window.removeEventListener('orientationchange', onResize);
+    };
+  }, []);
   const gameLoopRef = useRef<number>();
   const lastTimeRef = useRef<number>(0);
   const spawnTimerRef = useRef<number>(0);
   const safeLaneRef = useRef<number>(Math.floor(LANE_COUNT / 2));
+
+  // Responsive game dimensions based on viewport (keeps 3:2 aspect ratio)
+  const { gameWidth, gameHeight, laneWidth } = useMemo(() => {
+    const padding = isMobile ? 0 : 32;
+    const maxW = Math.max(320, Math.min(900, viewport.w - padding));
+    const maxH = Math.max(220, Math.min(600, viewport.h - padding));
+    const width = Math.min(maxW, Math.floor(maxH * 3 / 2)); // fit by height if needed
+    const height = Math.floor(width * 2 / 3);
+    return { gameWidth: width, gameHeight: height, laneWidth: width / LANE_COUNT };
+  }, [viewport.w, viewport.h, isMobile]);
 
   const clamp = (value: number, min: number, max: number) => 
     Math.min(Math.max(value, min), max);
@@ -131,9 +148,9 @@ export const GameEngine = () => {
 
       newEntities.push({
         id: `obstacle-${Date.now()}-${lane}`,
-        x: lane * LANE_WIDTH + 5,
+        x: lane * laneWidth + 5,
         y: -60,
-        width: LANE_WIDTH * width - 40, // Narrower obstacles
+        width: laneWidth * width - 40, // Narrower obstacles
         height: 70 + Math.random() * 40, // Taller obstacles (70-110px)
         type: 'obstacle',
         obstacleType,
@@ -153,7 +170,7 @@ export const GameEngine = () => {
       const bonusLane = nextSafe + (corridor > 1 && Math.random() < 0.5 ? 1 : 0);
       newEntities.push({
         id: `bonus-${Date.now()}`,
-        x: bonusLane * LANE_WIDTH + (LANE_WIDTH - 26) / 2,
+        x: bonusLane * laneWidth + (laneWidth - 26) / 2,
         y: -26,
         width: 26,
         height: 26,
@@ -175,7 +192,7 @@ export const GameEngine = () => {
       score: 0,
       speed: BASE_SCROLL_SPEED,
       time: 0,
-      playerX: GAME_WIDTH * 0.5 - 21,
+      playerX: gameWidth * 0.5 - 21,
       entities: []
     }));
     
@@ -244,21 +261,21 @@ export const GameEngine = () => {
       const newPlayerX = clamp(
         prev.playerX + direction * PLAYER_SPEED_X * deltaTime,
         0,
-        GAME_WIDTH - 42
+        gameWidth - 42
       );
 
       // Update entities in single pass
       const speedDelta = newSpeed * deltaTime;
       let collisionDetected = false;
       let scoreBonus = 0;
-      const playerRect = { x: newPlayerX, y: GAME_HEIGHT - 110, width: 42, height: 60 };
+      const playerRect = { x: newPlayerX, y: gameHeight - 110, width: 42, height: 60 };
       
       const filteredEntities = [];
       for (const entity of prev.entities) {
         const updatedY = entity.y + speedDelta;
         
         // Filter out entities that are off-screen
-        if (updatedY >= GAME_HEIGHT + 100 || entity.dead) continue;
+        if (updatedY >= gameHeight + 100 || entity.dead) continue;
         
         const updatedEntity = { ...entity, y: updatedY };
         
@@ -377,16 +394,17 @@ export const GameEngine = () => {
     return (
       <div className="min-h-screen flex items-center justify-center p-2 md:p-4">
         <div 
-          ref={gameRef}
-          className="relative w-[900px] h-[600px] mx-auto rounded-3xl game-surface overflow-hidden"
-          style={{
-            transform: `scale(${Math.min((window.innerWidth - (isMobile ? 0 : 32)) / 900, (window.innerHeight - (isMobile ? 0 : 32)) / 600)})`,
-            touchAction: 'none'
-          }}
-          tabIndex={0}
-          role="application"
-          aria-label="Flame Racer Game"
-          onContextMenu={(e) => e.preventDefault()}
+      ref={gameRef}
+      className="relative mx-auto rounded-3xl game-surface overflow-hidden"
+      style={{
+        width: `${gameWidth}px`,
+        height: `${gameHeight}px`,
+        touchAction: 'none'
+      }}
+      tabIndex={0}
+      role="application"
+      aria-label="Flame Racer Game"
+      onContextMenu={(e) => e.preventDefault()}
         >
         {/* Simple blue gradient background */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -399,7 +417,7 @@ export const GameEngine = () => {
         </div>
 
 
-        {isMobile && (
+        {isMobile && gameState.isRunning && (
           <div className="absolute inset-0 z-40 flex select-none">
             <div
               className="flex-1 h-full"
@@ -422,7 +440,7 @@ export const GameEngine = () => {
 
         {/* Game entities */}
         <div className="absolute inset-0 z-10">
-          <Player x={gameState.playerX} y={GAME_HEIGHT - 110} />
+          <Player x={gameState.playerX} y={gameHeight - 110} />
           
           {gameState.entities.map(entity => (
             entity.type === 'obstacle' ? (
