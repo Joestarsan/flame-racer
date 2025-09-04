@@ -21,9 +21,9 @@ export const HUD = memo(({ score, speed, bestScore }: HUDProps) => {
         </div>
       </div>
       
-      <div className="px-3 py-2 rounded-xl font-bold text-sm bg-black/20 border border-white/20">
-        <span className="text-gray-300">← → or A D</span>
-      </div>
+        <div className="px-3 py-2 rounded-xl font-bold text-sm bg-black/20 border border-white/20">
+          <span className="text-gray-300">Tap left/right or ← →</span>
+        </div>
     </div>
   );
 });

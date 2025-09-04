@@ -7,6 +7,7 @@ import { Bonus } from "./Bonus";
 import { HUD } from "./HUD";
 import { GameMenu } from "./GameMenu";
 import { GameOverlay } from "./GameOverlay";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface Entity {
   id: string;
@@ -60,6 +61,7 @@ export const GameEngine = () => {
   });
 
   const [input, setInput] = useState({ left: false, right: false });
+  const isMobile = useIsMobile();
   const gameLoopRef = useRef<number>();
   const lastTimeRef = useRef<number>(0);
   const spawnTimerRef = useRef<number>(0);
@@ -373,16 +375,18 @@ export const GameEngine = () => {
   }, [gameState.isRunning, gameLoop]);
 
     return (
-      <div className="min-h-screen flex items-center justify-center p-4">
+      <div className="min-h-screen flex items-center justify-center p-2 md:p-4">
         <div 
           ref={gameRef}
           className="relative w-[900px] h-[600px] mx-auto rounded-3xl game-surface overflow-hidden"
           style={{
-            transform: `scale(${Math.min((window.innerWidth - 32) / 900, (window.innerHeight - 32) / 600)})`
+            transform: `scale(${Math.min((window.innerWidth - (isMobile ? 0 : 32)) / 900, (window.innerHeight - (isMobile ? 0 : 32)) / 600)})`,
+            touchAction: 'none'
           }}
           tabIndex={0}
           role="application"
           aria-label="Flame Racer Game"
+          onContextMenu={(e) => e.preventDefault()}
         >
         {/* Simple blue gradient background */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -394,7 +398,27 @@ export const GameEngine = () => {
           />
         </div>
 
-        
+
+        {isMobile && (
+          <div className="absolute inset-0 z-40 flex select-none">
+            <div
+              className="flex-1 h-full"
+              onTouchStart={(e) => { e.preventDefault(); setInput((p) => ({ ...p, left: true })); }}
+              onTouchEnd={() => setInput({ left: false, right: false })}
+              onTouchCancel={() => setInput({ left: false, right: false })}
+              onPointerDown={(e) => { e.preventDefault(); setInput((p) => ({ ...p, left: true })); }}
+              onPointerUp={() => setInput({ left: false, right: false })}
+            />
+            <div
+              className="flex-1 h-full"
+              onTouchStart={(e) => { e.preventDefault(); setInput((p) => ({ ...p, right: true })); }}
+              onTouchEnd={() => setInput({ left: false, right: false })}
+              onTouchCancel={() => setInput({ left: false, right: false })}
+              onPointerDown={(e) => { e.preventDefault(); setInput((p) => ({ ...p, right: true })); }}
+              onPointerUp={() => setInput({ left: false, right: false })}
+            />
+          </div>
+        )}
 
         {/* Game entities */}
         <div className="absolute inset-0 z-10">
